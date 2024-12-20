@@ -1,7 +1,8 @@
 FROM debian : Bookworm
-RUN apt-get update
-RUN apt-get upgrade
-expose 443 #le conteneur ecoutera ce port-> pour les connexions HTTPS
+RUN apt-get update && \
+    apt-get upgrade
+expose 443 
+#le conteneur ecoutera ce port-> pour les connexions HTTPS
 
 RUN apt-get install -y --no-install-recommends nginx openssl #nginx->serveur web openssl ->pour gerer les certif ssl
 RUN mkdir -p /etc/nginx/ssl #rep pour stocker les fichiers ssl
