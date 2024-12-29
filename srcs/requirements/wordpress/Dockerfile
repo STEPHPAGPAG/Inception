@@ -1,42 +1,47 @@
-FROM debian:bullseye
+# Use Alpine Linux version 3.19 as the base image
+FROM alpine:3.19
 
-#installation des outils necessaires  et mise a jour des paquets
-RUN     apt-get update && apt-get upgrade -y
-RUN     apt-get install                 \
-                        wget            \
-                        php             \
-                        php-fpm         \
-                        php-cli         \
-                        php-mysql       \
-                        mariadb-client  \
-                        netcat          \
-                        -y
+# Update package index and upgrade existing packages
+RUN apk update && apk upgrade
+# Install PHP and required extensions without cache to reduce image size
+RUN apk add --no-cache \
+		php-fpm \
+		php-mysqli \
+		php-phar \
+		php-iconv \
+		wget
+# PHP FastCGI Process Manager
+# MySQL Improved extension for PHP
+# PHAR (PHP Archive) support
+# Support for character set conversions
+# Command-line tool to download files
 
-#creation de repertoire et ajuste les permissions pour stocker les fichiers wordpress
-RUN     mkdir -p /var/www/html
+# Create the directory for serving web files
+RUN mkdir -p /var/www/html
+# Set the working directory to /var/www/html
+WORKDIR /var/www/html
 
-RUN     mkdir -p /run/php
-#attention on change utilisateur par defaut
-RUN     chown -R www-data:www-data /run/php
+# Download the specified version of WordPress
+RUN wget https://wordpress.org/wordpress-6.4.3.tar.gz
+# Extract WordPress files, removing the top-level directory
+RUN tar -xzf wordpress-6.4.3.tar.gz --strip-components 1
+# Remove the downloaded tar file to save space
+RUN rm wordpress-6.4.3.tar.gz
 
-#Telecharge et installe wordpress
-RUN     wget https://wordpress.org/latest.tar.gz -P /var/www/ && \
-        tar -xvf /var/www/latest.tar.gz -C /var/www/html --strip-components=1 && \
-        rm -rf /var/www/latest.tar.gz && \
-        chown -R www-data:www-data /var/www/html
+# Download the WP-CLI (WordPress Command Line Interface) script
+RUN wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+# Make the WP-CLI script executable
+RUN chmod u+x wp-cli.phar
+# Move the WP-CLI script to a directory in the PATH
+RUN mv wp-cli.phar /usr/local/bin/wp
 
-#installe command line interface 
-RUN     wget https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
-        chmod +x wp-cli.phar && \
-        mv wp-cli.phar /usr/local/bin/wp
+# Copy the custom PHP-FPM configuration into the container
+COPY conf/www.conf /etc/php82/php-fpm.d/www.conf
+# Copy the entrypoint script into the container
+COPY tools/wp-config.sh /wp-config.sh
 
-#ecoute sur le port 9000
-# COPY ./conf/www.conf /etc/php/7.4/fpm/pool.d/www.conf
-COPY ./conf/www.conf /config/www.conf
-EXPOSE 9000
+# Make the entrypoint script executable
+RUN chmod u+x /wp-config.sh
 
-#copy over config script and give permissions
-COPY ./tools/wp-config.sh /wp-config.sh
-RUN   chmod +x /wp-config.sh
-
+# Set the entrypoint to run the script when the container starts
 ENTRYPOINT ["/wp-config.sh"]

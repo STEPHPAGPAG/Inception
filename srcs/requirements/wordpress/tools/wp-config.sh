@@ -1,44 +1,50 @@
 #!/bin/sh
 
-# Répertoires et chemins par défaut
-WP_DIR=${WP_DIR:-/var/www/html}
-if [ ! -e "${WP_DIR}/wp-config.php" ]
+# Define the directory where WordPress is installed
+wp_dir='/var/www/html'
+
+# Check if the WordPress configuration file does not exist
+if [ ! -e "${wp_dir}/wp-config.php" ]
 then
 
-# Configuration initiale
-wp config create --allow-root \
-                 --dbname="$MDB_NAME" \
-                 --dbuser="$MDB_USER" \
-                 --dbpass="$MDB_PASS" \
-                 --dbhost=mariadb:3306 \
-                 --path="$WP_DIR"
+	# Create the WordPress confuiguration file with the specified database settings
+	wp config create	--allow-root \
+				--dbname=$DB_NAME \
+				--dbuser=$DB_USER \
+				--dbpass=$DB_PASS \
+				--dbhost=mariadb:3306 \
+				--path=$wp_dir
+	# Database name
+	# Database user
+	# Database password
+	# Database host
+	# WP install path
 
-# Installation de WordPress
-wp core install --allow-root \
-                --url="$WP_URL" \
-                --title="$WP_TITLE" \
-                --admin_user="$WP_ADMIN" \
-                --admin_password="$WP_ADMIN_PASS" \
-                --admin_email="$WP_ADMIN_EMAIL" \
-                --skip-email \
-                --path="$WP_DIR"
+	# Install WordPress core files
+	wp core install		--allow-root \
+				--url=$WP_URL \
+				--title=$WP_TITLE \
+				--admin_email=$WP_ADMIN_EMAIL \
+				--admin_user=$WP_ADMIN \
+				--admin_password=$WP_ADMIN_PASS \
+				--path=$wp_dir
+	# Site URL
+	# Site title
+	# Admin email
+	# Admin username
+	# Admin password
+	# WP install path
 
-# Ajout d'un utilisateur
-wp user create "$WP_USER" "$WP_USER_EMAIL" \
-               --allow-root \
-               --role=subscriber \
-               --user_pass="$WP_USER_PASS"
+	# Create a new WordPress user
+	wp user create		--allow-root \
+				$WP_USER $WP_USER_EMAIL \
+				--user_pass=$WP_USER_PASS \
+				--path=$wp_dir
+	# New user and email
+	# New user's password
+	# WP installation path
 
-# Mise à jour des options
-wp option update home 'https://spagliar.42.fr' --allow-root
-wp option update siteurl 'https://spagliar.42.fr' --allow-root
-
-else
-    echo "wordpress config already completed"
 fi
 
-# Lancement de PHP-FPM en arriere plan
-/usr/sbin/php-fpm7.4 -F
-
-
-
+/usr/sbin/php-fpm82 -F
+# Start the PHP FastCGI Process Manager in the foreground

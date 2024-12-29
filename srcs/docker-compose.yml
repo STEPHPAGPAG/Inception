@@ -5,20 +5,18 @@ services:
     container_name: nginx
     # hostname: webserver
     build:
-      context: ./requirements/nginx
+      context: requirements/nginx
     volumes:
       - wordpress:/var/www/html
     # depends_on:
       # wordpress:
         # condition: service_healthy
-    image: img_nginx
-    env_file:
-      - .env
+    image: "nginx"
     ports:
       - "443:443"
     restart: always
     networks:
-      - Inception
+      - inception
     healthcheck:
       test: ["CMD-SHELL", "curl -f https://localhost || exit 1"]
       interval: 5s
@@ -29,37 +27,41 @@ services:
     container_name: wordpress
     hostname: wordpress
     build:
-      context: ./requirements/wordpress
+      context: requirements/wordpress
     volumes:
       - wordpress:/var/www/html
-    image: img_wordpress
+    image: "wordpress"
     env_file:
       - .env
     restart: unless-stopped
     networks:
-      - Inception
+      - inception
     healthcheck:
       test: ["CMD-SHELL", "curl --silent --fail localhost:9000 || exit 1"]
       interval: 5s
       timeout: 10s
       retries: 3
-    # depends_on:
-      # mariadb:
-        # condition: service_healthy
+    expose:
+      - "9000"
+    depends_on:
+      mariadb:
+        condition: service_started
 
   mariadb:
     container_name: mariadb
-    hostname: mariadb
+    hostname: "mariadb"
     volumes:
       - mariadb:/var/lib/mysql
     build:
-      context: ./requirements/mariadb
-    image: img_mariadb
+      context: requirements/mariadb
+    image: mariadb
     env_file:
       - .env
     restart: unless-stopped
     networks:
-      - Inception
+      - inception
+    expose:
+      - "3306"
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$MDB_USER -p$MDB_PASS || exit 1"]
       interval: 5s
@@ -82,6 +84,5 @@ volumes:
       o: bind
 
 networks:
-  Inception:
-    name: Inception
+  inception:
     driver: bridge
