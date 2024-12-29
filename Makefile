@@ -1,36 +1,21 @@
-NAME = inception
-SRCS = ./srcs/
-COMPOSE = ./srcs/docker-compose.yml
+# s'exécute avec make : creation de repert mysql+wordpr + lance docker conp + construit les images
+all:
+	mkdir -p /home/spagliar/data/mysql /home/spagliar/data/wordpress
+	docker compose -f ./srcs/docker-compose.yml up -d --build
 
-all: conf up
-
-conf:
-	@cp ./.env ./srcs/
-	@echo "Creating volumes...\n"
-	@mkdir -p /home/spagliar/data/mariadb-volume /home/spagliar/data/wordpress-volume
-	@sudo sed -i '/^127.0.0.1/ {/spagliar.42.fr/! s/localhost/localhost spagliar.42.fr/}' /etc/hosts
-	@echo "\n"
-	@echo "Starting docker compose up..."
-
+# redemarre sans reconstruire les images (up -d)
 up:
-	docker compose -p $(NAME) -f $(COMPOSE) up --build -d
+	docker compose -f ./srcs/docker-compose.yml up -d
 
+# Arrête et supprime les containers, réseaux, volumes (down)
 down:
-	docker compose -p $(NAME) down --volumes
+	docker compose -f ./srcs/docker-compose.yml down
 
-start:
-	docker compose -p $(NAME) start
+# pour tout nettoyer et supprimer (volumes, mysql et fichiers temporaires)
+fclean: down
+	docker system prune -fa --volumes
+	sudo rm -rf /home/spagliar/data/mariadb/*
+	sudo rm -rf /home/spagliar/data/wordpress/*
 
-stop:
-	docker compose -p $(NAME) stop
-
-clean-images:
-	docker rmi -f $$(docker images -q) || true
-
-clean: down clean-images
-
-fclean: clean
-	@sudo rm -rf /home/spagliar/data
-	@docker system prune
-
-re: fclean conf up
+# pour effectuer un nettoyage complet (fclean) et relancer l'ensemble du processus (all)
+re: fclean all

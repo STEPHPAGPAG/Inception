@@ -1,63 +1,87 @@
-version: '3.7'
+version: '3'
+
 services:
   nginx:
-    image: nginx:inception
     container_name: nginx
-    build:  ./requirements/nginx
-    restart: always
-    depends_on:
-      - wordpress
-      - mariadb
+    # hostname: webserver
+    build:
+      context: ./requirements/nginx
+    volumes:
+      - wordpress:/var/www/html
+    # depends_on:
+      # wordpress:
+        # condition: service_healthy
+    image: img_nginx
+    env_file:
+      - .env
     ports:
-      - '443:443'
-    env_file: .env
+      - "443:443"
+    restart: always
     networks:
-      - inception-net
-    volumes:
-      - wordpress-volume:/var/www/wordpress
-    
+      - Inception
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f https://localhost || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+
   wordpress:
-    image: wordpress:inception
     container_name: wordpress
-    build:  ./requirements/wordpress
-    restart: always
-    depends_on:
-      - mariadb
-    expose:
-      - "9000"
-    env_file: .env
-    networks:
-      - inception-net
+    hostname: wordpress
+    build:
+      context: ./requirements/wordpress
     volumes:
-      - wordpress-volume:/var/www/wordpress
-  
+      - wordpress:/var/www/html
+    image: img_wordpress
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - Inception
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail localhost:9000 || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+    # depends_on:
+      # mariadb:
+        # condition: service_healthy
+
   mariadb:
-    image: mariadb:inception
     container_name: mariadb
-    build: ./requirements/mariadb
-    restart: always
-    expose:
-      - "3306"
-    env_file: .env
-    networks:
-      - inception-net
+    hostname: mariadb
     volumes:
-      - mariadb-volume:/var/lib/mysql
-    
-networks:
-  inception-net:
-    driver: bridge
+      - mariadb:/var/lib/mysql
+    build:
+      context: ./requirements/mariadb
+    image: img_mariadb
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - Inception
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$MDB_USER -p$MDB_PASS || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
 
 volumes:
-  mariadb-volume:
+  mariadb:
     driver: local
     driver_opts:
-      type: none
-      device: /home/${spagliar}/data/mariadb-volume
+      type: volume
+      device: /home/spagliar/data/mysql
       o: bind
-  wordpress-volume:
+
+  wordpress:
     driver: local
     driver_opts:
-      type: none
-      device: /home/${spagliar}/data/wordpress-volume
+      type: volume
+      device: /home/spagliar/data/wordpress
       o: bind
+
+networks:
+  Inception:
+    name: Inception
+    driver: bridge

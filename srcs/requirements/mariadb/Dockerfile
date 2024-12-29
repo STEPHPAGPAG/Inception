@@ -1,12 +1,18 @@
-FROM debian : Bookworm  # tte l image sera construite a partir de cette image de base
+FROM debian:bullseye
 
-EXPOSE 3306 #expose le port utilise pour les connexions entrantres mariadb
+# Mise à jour et installation de MariaDB
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y mariadb-server mariadb-client
 
-RUN apt update && apt install -y --no-install-recommends --no-install-suggests
-RUN mariadb-server && rm -rf /var/lib/apt/lists/*
+# Copier les fichiers de configuration et le script d'entrée
+COPY ./conf/50.server.cnf /etc/mysql/mariadb.conf.d/50-server.cnf
+COPY ./tools/init-db.sh /init-db.sh
 
-COPY conf/20-server.cnf /etc/mysql/mariadb.conf.d/
-COPY tools/entrypoint.sh /bin/
-RUN chmod +x /bin/entrypoint.sh
+# Rendre le script exécutable
+RUN chmod +x /init-db.sh
 
-CMD ["entrypoint.sh", "mysqld_safe"]
+# port par défaut de MariaDB
+EXPOSE 3306
+
+#run maria 
+ENTRYPOINT ["/init-db.sh"]

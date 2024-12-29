@@ -1,23 +1,36 @@
-FROM debian : Bookworm
-RUN apt-get update && \
-    apt-get upgrade
-expose 443 
-#le conteneur ecoutera ce port-> pour les connexions HTTPS
+# Utilise l'image de base Debian Bullseye
+FROM debian:bullseye
 
-RUN apt-get install -y --no-install-recommends nginx openssl #nginx->serveur web openssl ->pour gerer les certif ssl
-RUN mkdir -p /etc/nginx/ssl #rep pour stocker les fichiers ssl
+# Mise à jour des paquets et installer les dépendances nécessaires
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y nginx openssl php-fpm
 
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
-    -keyout /etc/nginx/ssl/nginx.key -out /etc/nginx/ssl/nginx.crt \
-    -subj "/C=PT/ST=Porto/L=Porto/O=42 Porto/CN=andvieir.42.fr"
-#certificat SSL auto signe
+# Création des répertoires nécessaires pour Nginx et SSL
+RUN mkdir -p /etc/nginx/ssl /var/run/nginx /var/www/html
 
-COPY /tmp/
-COPY /conf/nginx.conf /etc/nginx/
-#copie les fichiers de configuration
+# Supprimer la configuration par défaut de Nginx
+RUN rm -f /etc/nginx/sites-enabled/default
 
-RUN chmod 755 /var/www/html
-RUN chown -R www-data:www-data /var/www/html
-#modif les permissions -> lecture ecriture
+# Copie nginx.conf vers le dossier conf
+COPY conf/nginx.conf /etc/nginx/sites-available/inception
+RUN ln -s /etc/nginx/sites-available/inception /etc/nginx/sites-enabled/inception
 
-CMD ["sh", "-c", "/bin/bash /tmp/entrypoint.sh;"]
+# certificats SSL auto-signés
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -out /etc/nginx/ssl/inception.crt \
+    -keyout /etc/nginx/ssl/inception.key \
+    -subj "/C=FR/ST=France/L=Paris/O=42/OU=spagliar/CN=spagliar.42.fr"
+
+# COPY conf/nginx.conf /etc/nginx/http.d/default.conf
+
+# répertoire par défaut pour servir les fichiers
+WORKDIR /var/www/html
+
+# S'assurer que Nginx et PHP fonctionnent avec les permissions correctes
+RUN chown -R www-data:www-data /var/www/html && chmod -R 755 /var/www/html
+
+EXPOSE 443
+
+# Copier le point d'entrée pour lancer Nginx
+CMD [ "nginx", "-g", "daemon off;" ]
+
